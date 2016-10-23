@@ -1,5 +1,5 @@
 # LineChart
-
+![linechart.gif](https://github.com/jinxiyang/LineChart/blob/master/gif/linechart.gif)
 
 ##表的样式参数
 

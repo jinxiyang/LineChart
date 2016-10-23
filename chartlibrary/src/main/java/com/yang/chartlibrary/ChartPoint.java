@@ -7,7 +7,7 @@ package com.yang.chartlibrary;
 public class ChartPoint {
 
     public static final int MIN_RADIUS = 1;
-    public static final int MAX_RADIUS = 5;
+    public static final int MAX_RADIUS = 10;
     public static final int NORMAL_RADIUS = 3;
 
     private int x;
@@ -18,6 +18,9 @@ public class ChartPoint {
 
     public ChartPoint(int yValue) {
         this.yValue = yValue;
+    }
+
+    public ChartPoint() {
     }
 
     public int getX() {

@@ -25,6 +25,17 @@ import java.util.List;
  */
 
 public class LineChart extends View {
+    //默认的动画脉冲间隔
+    private static final long DEFAULT_INTERVAL_TIME = 20;
+
+    //默认x轴最大显示几项
+    private static final int DEFAULT_X_MAX_ITEM_NUM = 10;
+
+    //默认y轴最大显示几格
+    private static final int DEFAULT_Y_MAX_ITEM_NUM = 5;
+
+    //默认点的最大半径,dp
+    private static final int DEFAULT_MAX_POINT_RADIUS = 6;
 
     //坐标轴文字的颜色
     private int axisTextColor =  Color.rgb(205, 137, 118);
@@ -99,17 +110,23 @@ public class LineChart extends View {
     //y坐标轴单位长度所代表的像素,px
     private int yUnit;
 
+    //点闪烁时,最大的半径
+    private int maxPointRadius = DEFAULT_MAX_POINT_RADIUS;
+
+    //点正常时的半径
+    private int pointRadius = DEFAULT_MAX_POINT_RADIUS / 2;
+
+    //y轴每单位长度,所代表的值
+    private int yUnitValue = 50;
+
+    //y轴的单位
+    private String yUnitName = "万人";
+
     //原点在chart中的x值,px
     private int originX;
 
     //原点在chart中的y值,px
     private int originY;
-
-    //x轴默认显示几项
-    private int xItemNum = 10;
-
-    //y轴默认显示几项
-    private int yItemNum = 5;
 
     private Paint mPaint;
 
@@ -119,14 +136,18 @@ public class LineChart extends View {
 
     private List<String> yLabels;
 
-    //默认的动画脉冲间隔
-    private static final long DEFAULT_INTERVAL_TIME = 20;
+    //x轴默认显示几项
+    private int xItemNum = DEFAULT_X_MAX_ITEM_NUM;
+
+    //y轴默认显示几项
+    private int yItemNum = DEFAULT_Y_MAX_ITEM_NUM;
+
 
     //动画脉冲间隔
     private long intervalTime = DEFAULT_INTERVAL_TIME;
 
     //每次移动进度
-    private float intervalProgress = 0.05f;
+    private float intervalProgress = 0.06f;
 
     //0-10,动画执行时在x轴上的进度
     private float mProgress = 0;
@@ -136,6 +157,9 @@ public class LineChart extends View {
 
     //标识动画是否正在执行
     private boolean isAniming = true;
+
+    //是否需要计算点
+    private boolean needCalculatePoint = true;
 
     private DisplayMetrics mDm;
 
@@ -156,9 +180,10 @@ public class LineChart extends View {
     private void init() {
         mPaint = new Paint();
         lineHeadPoint = new ChartPoint();
+        xLabels = new ArrayList<>();
+        yLabels = new ArrayList<>();
         mPoints = new ArrayList<>();
         mDm = getContext().getResources().getDisplayMetrics();
-        calculatePoint();
     }
 
     //不作处理,因为模板可知宽高一定
@@ -173,20 +198,15 @@ public class LineChart extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         mWidth = w;
         mHeight = h;
+        needCalculatePoint = true;
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        //计算每个轴上的单位长度所对应的px距离， 加 1 是给坐标轴文字占得空间
-        xUnit = (mWidth - getPaddingLeft() - getPaddingRight()) / (xItemNum + 1);
-        yUnit = (mHeight - getPaddingTop() - getPaddingBottom()) / (yItemNum + 1);
-
-        //计算原点的坐标
-        originX = getPaddingLeft() + xUnit;
-        originY = getBottom() - getPaddingBottom() - yUnit;
-
-        calculatePoint();
+        if (needCalculatePoint){
+            calculatePoint();
+        }
 
         drawXAxis(canvas);
         drawDashedLines(canvas);
@@ -211,35 +231,33 @@ public class LineChart extends View {
 
     //根据数据计算坐标
     private void calculatePoint() {
+        //计算每个轴上的单位长度所对应的px距离， 加 1 是给坐标轴文字占得空间
+        xUnit = (mWidth - getPaddingLeft() - getPaddingRight()) / (xItemNum + 1);
+        yUnit = (mHeight - getPaddingTop() - getPaddingBottom()) / (yItemNum + 1);
+
+        //计算原点的坐标
+        originX = getPaddingLeft() + xUnit;
+        originY = getBottom() - getPaddingBottom() - yUnit;
+
+        xLabels.clear();
         int size = mPoints.size();
         for (int i = 0; i < size; i++) {
             ChartPoint point = mPoints.get(i);
+            //x轴的第一个点距离y轴0.5个单位长度
             int x = (int) (originX + (i + 0.5) * xUnit);
-            int y = (int) (originY - point.getyValue() * 1.0f / 50 * yUnit);
+            int y = (int) (originY - point.getyValue() * 1.0f / yUnitValue * yUnit);
             point.setX(x);
             point.setY(y);
+            xLabels.add(point.getxLabel());
         }
 
-        xLabels = new ArrayList<>();
-        xLabels.add("9/16");
-        xLabels.add("9/17");
-        xLabels.add("9/18");
-        xLabels.add("9/19");
-        xLabels.add("9/20");
-        xLabels.add("9/21");
-        xLabels.add("9/22");
-        xLabels.add("9/23");
-        xLabels.add("9/24");
-        xLabels.add("9/25");
+        yLabels.clear();
+        yLabels.add("(" + yUnitName + ")" + 0);
+        for (int i = 1; i <= yItemNum; i++){
+            yLabels.add(yUnitValue * i + "");
+        }
 
-
-        yLabels = new ArrayList<>();
-        yLabels.add("(万人) 0");
-        yLabels.add("50");
-        yLabels.add("100");
-        yLabels.add("150");
-        yLabels.add("200");
-        yLabels.add("250");
+        needCalculatePoint = true;
     }
 
     //绘制x坐标轴
@@ -249,7 +267,7 @@ public class LineChart extends View {
         mPaint.setAntiAlias(true);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setStrokeWidth(dpToPx(mDm, xAxisWidth));
-        canvas.drawLine(originX, originY, originX + xUnit * 10, originY, mPaint);
+        canvas.drawLine(originX, originY, originX + xUnit * xItemNum, originY, mPaint);
 
         int startX = (int) (originX + 0.5 * xUnit);
         int childLineHeight = dpToPx(mDm, xAxisChildLineHeight);
@@ -274,7 +292,7 @@ public class LineChart extends View {
             //drawline不支持画虚线，故用drawPath
             path.reset();
             path.moveTo(originX, startY - i * yUnit);
-            path.lineTo(originX + xUnit * 10, startY - i * yUnit);
+            path.lineTo(originX + xUnit * xItemNum, startY - i * yUnit);
             canvas.drawPath(path, mPaint);
         }
     }
@@ -282,7 +300,7 @@ public class LineChart extends View {
     //绘制圆点
     private void drawChartPoints(Canvas canvas) {
         int ceil = (int) Math.ceil(mProgress);
-        if (ceil == 0){
+        if (ceil == 0 || mPoints.isEmpty()){
             return;
         }
         int size = mPoints.size();
@@ -293,24 +311,24 @@ public class LineChart extends View {
         mPaint.setColor(pointColor);
         mPaint.setStyle(Paint.Style.FILL);
         mPaint.setAntiAlias(true);
+        int radius = dpToPx(mDm, pointRadius);
 
-        for (int i = 0; i < ceil - 1; i++){
+        for (int i = 0; i < ceil - 1; i++){//不绘制闪烁点,不绘制最后一个点
             ChartPoint p = mPoints.get(i);
-            canvas.drawCircle(p.getX(), p.getY(), 5, mPaint);
+            canvas.drawCircle(p.getX(), p.getY(), radius, mPaint);
         }
-        if (size > 0){
-            drawFlashPoint(canvas, ceil);
-        }
+        drawFlashPoint(canvas, ceil);
     }
 
     //绘制闪烁的点
     private void drawFlashPoint(Canvas canvas, int ceil) {
         ChartPoint flashP = mPoints.get(ceil - 1);
-        double flashParam = Math.abs(Math.cos(Math.PI * (mProgress - Math.floor(mProgress)) * 5 / 2));
-        if (isAniming){
-            canvas.drawCircle(flashP.getX(), flashP.getY(), (float) (ChartPoint.MAX_RADIUS * flashParam), mPaint);
-        }else {
-            canvas.drawCircle(flashP.getX(), flashP.getY(), 5, mPaint);
+        if (isAniming){//绘制闪烁点
+            //函数y = |cos(pi * (mProgress - ceil) * 5/2)|       动画实现的关键
+            double flashParam = Math.abs(Math.cos(Math.PI * (mProgress - Math.floor(mProgress)) * 5 / 2));
+            canvas.drawCircle(flashP.getX(), flashP.getY(), (float) (maxPointRadius * flashParam), mPaint);
+        }else {//绘制最后一个点
+            canvas.drawCircle(flashP.getX(), flashP.getY(), dpToPx(mDm, pointRadius), mPaint);
         }
     }
 
@@ -343,7 +361,7 @@ public class LineChart extends View {
     private void drawLine(Canvas canvas) {
         int floor = (int) Math.floor(mProgress);
         int size = mPoints.size();
-        if (floor == 0){
+        if (floor == 0 || mPoints.isEmpty()){
             return;
         }else if (floor == size){
             lineHeadPoint = mPoints.get(size - 1);
@@ -379,7 +397,8 @@ public class LineChart extends View {
         mPaint.setTextSize(spToPx(mDm, axisTextSize));
         mPaint.setAntiAlias(true);
         Rect textRect = new Rect();
-        for (int i = 0; i <= yItemNum; i++){
+        int size = yLabels.size();
+        for (int i = 0; i < size; i++){
             String label = yLabels.get(i);
             if (TextUtils.isEmpty(label)){
                 break;
@@ -400,7 +419,8 @@ public class LineChart extends View {
         Rect textRect = new Rect();
         int childLineHeight = dpToPx(mDm, xAxisChildLineHeight);
         int gap = dpToPx(mDm, xAxisGap);
-        for (int i = 0; i < xItemNum; i++){
+        int size = xLabels.size();
+        for (int i = 0; i < size; i++){
             String label = xLabels.get(i);
             if (TextUtils.isEmpty(label)){
                 break;
@@ -415,10 +435,20 @@ public class LineChart extends View {
 
     public void setData(List<ChartPoint> points){
         mPoints = points;
-        calculatePoint();
         isAniming = true;
         mProgress = 0;
+        needCalculatePoint = true;
         postInvalidate();
+    }
+
+    //dp转为px
+    public int dpToPx(DisplayMetrics dm, int dp){
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, dm);
+    }
+
+    //sp转为px
+    public int spToPx(DisplayMetrics dm, int sp){
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm);
     }
 
 
@@ -502,13 +532,36 @@ public class LineChart extends View {
         this.makerLineWidth = makerLineWidth;
     }
 
-    //dp转为px
-    public int dpToPx(DisplayMetrics dm, int dp){
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, dm);
+
+    public void setyUnitName(String yUnitName) {
+        this.yUnitName = yUnitName;
     }
 
-    //sp转为px
-    public int spToPx(DisplayMetrics dm, int sp){
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm);
+    public void setyUnitValue(int yUnitValue) {
+        this.yUnitValue = yUnitValue;
+    }
+
+    public void setPointRadius(int pointRadius) {
+        this.pointRadius = pointRadius;
+    }
+
+    public void setMaxPointRadius(int maxPointRadius) {
+        this.maxPointRadius = maxPointRadius;
+    }
+
+    public void setxItemNum(int xItemNum) {
+        this.xItemNum = xItemNum;
+    }
+
+    public void setyItemNum(int yItemNum) {
+        this.yItemNum = yItemNum;
+    }
+
+    public void setIntervalTime(long intervalTime) {
+        this.intervalTime = intervalTime;
+    }
+
+    public void setIntervalProgress(float intervalProgress) {
+        this.intervalProgress = intervalProgress;
     }
 }

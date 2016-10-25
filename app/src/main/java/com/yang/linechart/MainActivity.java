@@ -16,23 +16,23 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         final LineChart chart = (LineChart) findViewById(R.id.linechart);
         final ArrayList<ChartPoint> mPoints = new ArrayList<>();
-        mPoints.add(new ChartPoint(120));
-        mPoints.add(new ChartPoint(132));
-        mPoints.add(new ChartPoint(101));
-        mPoints.add(new ChartPoint(134));
-        mPoints.add(new ChartPoint(90));
-        mPoints.add(new ChartPoint(230));
-        mPoints.add(new ChartPoint(210));
-        mPoints.add(new ChartPoint(134));
-        mPoints.add(new ChartPoint(90));
-        mPoints.add(new ChartPoint(230));
+        mPoints.add(new ChartPoint(120, "9/16"));
+        mPoints.add(new ChartPoint(132, "9/17"));
+        mPoints.add(new ChartPoint(101, "9/18"));
+        mPoints.add(new ChartPoint(134, "9/19"));
+        mPoints.add(new ChartPoint(90, "9/20"));
+        mPoints.add(new ChartPoint(230, "9/21"));
+        mPoints.add(new ChartPoint(210, "9/22"));
+        mPoints.add(new ChartPoint(134, "9/23"));
+        mPoints.add(new ChartPoint(90, "9/24"));
+        mPoints.add(new ChartPoint(230, "9/27"));
 
 //        chart.postDelayed(new Runnable() {
 //            @Override
 //            public void run() {
 //                chart.setData(mPoints);
 //            }
-//        }, 2000);
+//        }, 5000);
 
         chart.setData(mPoints);
     }

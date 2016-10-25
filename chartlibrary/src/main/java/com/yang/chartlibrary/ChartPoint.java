@@ -5,19 +5,22 @@ package com.yang.chartlibrary;
  */
 
 public class ChartPoint {
-
-    public static final int MIN_RADIUS = 1;
-    public static final int MAX_RADIUS = 10;
-    public static final int NORMAL_RADIUS = 3;
-
+    //点的x坐标,会由图表自动计算
     private int x;
-    private int y;
-    private int radius;
 
+    //点的y坐标,会由图表自动计算
+    private int y;
+
+    //用户提供的y值
     private int yValue;
 
-    public ChartPoint(int yValue) {
+    //该点对应的x轴的文字
+    private String xLabel;
+
+
+    public ChartPoint(int yValue, String xLabel) {
         this.yValue = yValue;
+        this.xLabel = xLabel;
     }
 
     public ChartPoint() {
@@ -39,19 +42,19 @@ public class ChartPoint {
         this.y = y;
     }
 
-    public int getRadius() {
-        return radius;
-    }
-
-    public void setRadius(int radius) {
-        this.radius = radius;
-    }
-
     public int getyValue() {
         return yValue;
     }
 
     public void setyValue(int yValue) {
         this.yValue = yValue;
+    }
+
+    public String getxLabel() {
+        return xLabel;
+    }
+
+    public void setxLabel(String xLabel) {
+        this.xLabel = xLabel;
     }
 }

@@ -9,13 +9,19 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 折线图表，附带星星闪烁动画
+ *
+ * 注：图表中所有的字体大小、线的宽度都是dp单位，在绘制时会将dp转为px，sp转为px
  * Created by yang on 2016/10/20.
+ *
  */
 
 public class LineChart extends View {
@@ -23,35 +29,35 @@ public class LineChart extends View {
     //坐标轴文字的颜色
     private int axisTextColor =  Color.rgb(205, 137, 118);
 
-    //标轴文字的大小
-    private int axisTextSize = 15;
+    //标轴文字的大小,sp
+    private int axisTextSize = 14;
 
-    //文字和x坐标轴之间的间距
-    private int yAxisGap = 10;
+    //文字和x坐标轴之间的间距,dp
+    private int yAxisGap = 3;
 
-    //文字和y坐标轴之间的间距
-    private int xAxisGap = 10;
+    //文字和y坐标轴之间的间距,dp
+    private int xAxisGap = 3;
 
     //x坐标轴的颜色
     private int xAxisColor = Color.rgb(205, 137, 118);
 
-    //x坐标轴的宽度
+    //x坐标轴的宽度,dp
     private int xAxisWidth = 2;
 
-    //x坐标轴下面小竖线的高度
+    //x坐标轴下面小竖线的高度,dp
     private int xAxisChildLineHeight = 5;
 
     //虚线的颜色
     private int dashedLineColor = Color.argb(155, 19, 113, 187);
 
-    //虚线的宽度
+    //虚线的宽度,dp
     private int dashedLineWidth = 1;
 
-    //虚线中每段实线的宽度
-    private int dashWidth = 6;
+    //虚线中每段实线的宽度,dp
+    private int dashWidth = 5;
 
-    //虚线中实线间的间隔
-    private int dashGap = 4;
+    //虚线中实线间的间隔,dp
+    private int dashGap = 3;
 
     //阴影的颜色
     private int shadowColor = Color.argb(100, 177, 234, 253);
@@ -62,13 +68,13 @@ public class LineChart extends View {
     //点之间连线的颜色
     private int lineColor = Color.rgb(0, 220, 255);
 
-    //点之间连线的宽度
-    private int lineWidth = 5;
+    //点之间连线的宽度,dp
+    private int lineWidth = 2;
 
     //悬浮maker标记的字体颜色
     private int makerTextColor;
 
-    //悬浮maker标记的字体大小
+    //悬浮maker标记的字体大小,dp
     private int makerTextSize;
 
     //悬浮maker标记的背景颜色
@@ -77,26 +83,26 @@ public class LineChart extends View {
     //悬浮maker标旁边竖线的颜色
     private int makerLineColor;
 
-    //悬浮maker标旁边竖线的宽度
+    //悬浮maker标旁边竖线的宽度,dp
     private int makerLineWidth;
 
 
-    //图标的宽度
+    //图标的宽度,px
     private int mWidth;
 
-    //图标的高度
+    //图标的高度,px
     private int mHeight;
 
-    //x坐标轴单位长度所代表的像素
+    //x坐标轴单位长度所代表的像素,px
     private int xUnit;
 
-    //y坐标轴单位长度所代表的像素
+    //y坐标轴单位长度所代表的像素,px
     private int yUnit;
 
-    //原点在chart中的x值
+    //原点在chart中的x值,px
     private int originX;
 
-    //原点在chart中的y值
+    //原点在chart中的y值,px
     private int originY;
 
     //x轴默认显示几项
@@ -120,7 +126,7 @@ public class LineChart extends View {
     private long intervalTime = DEFAULT_INTERVAL_TIME;
 
     //每次移动进度
-    private float intervalProgress = 0.02f;
+    private float intervalProgress = 0.05f;
 
     //0-10,动画执行时在x轴上的进度
     private float mProgress = 0;
@@ -131,6 +137,7 @@ public class LineChart extends View {
     //标识动画是否正在执行
     private boolean isAniming = true;
 
+    private DisplayMetrics mDm;
 
 
     public LineChart(Context context) {
@@ -150,6 +157,7 @@ public class LineChart extends View {
         mPaint = new Paint();
         lineHeadPoint = new ChartPoint();
         mPoints = new ArrayList<>();
+        mDm = getContext().getResources().getDisplayMetrics();
         calculatePoint();
     }
 
@@ -201,7 +209,7 @@ public class LineChart extends View {
         }
     }
 
-    //更具数据计算左边
+    //根据数据计算坐标
     private void calculatePoint() {
         int size = mPoints.size();
         for (int i = 0; i < size; i++) {
@@ -240,12 +248,13 @@ public class LineChart extends View {
         mPaint.setColor(xAxisColor);
         mPaint.setAntiAlias(true);
         mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(xAxisWidth);
+        mPaint.setStrokeWidth(dpToPx(mDm, xAxisWidth));
         canvas.drawLine(originX, originY, originX + xUnit * 10, originY, mPaint);
 
         int startX = (int) (originX + 0.5 * xUnit);
+        int childLineHeight = dpToPx(mDm, xAxisChildLineHeight);
         for (int i = 0; i < xItemNum; i++){
-            canvas.drawLine(startX + i * xUnit, originY, startX + i * xUnit, originY + xAxisChildLineHeight, mPaint);
+            canvas.drawLine(startX + i * xUnit, originY, startX + i * xUnit, originY + childLineHeight, mPaint);
         }
     }
 
@@ -255,8 +264,8 @@ public class LineChart extends View {
         mPaint.setColor(dashedLineColor);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setAntiAlias(true);
-        mPaint.setStrokeWidth(dashedLineWidth);
-        DashPathEffect dashPathEffect = new DashPathEffect(new float[]{dashWidth, dashGap}, 0);
+        mPaint.setStrokeWidth(dpToPx(mDm, dashedLineWidth));
+        DashPathEffect dashPathEffect = new DashPathEffect(new float[]{dpToPx(mDm, dashWidth), dpToPx(mDm, dashGap)}, 0);
         mPaint.setPathEffect(dashPathEffect);
 
         int startY = originY - yUnit;
@@ -351,7 +360,7 @@ public class LineChart extends View {
         mPaint.setColor(lineColor);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setAntiAlias(true);
-        mPaint.setStrokeWidth(lineWidth);
+        mPaint.setStrokeWidth(dpToPx(mDm, lineWidth));
         Path path = new Path();
         ChartPoint firstP = mPoints.get(0);
         path.moveTo(firstP.getX(), firstP.getY());
@@ -367,7 +376,7 @@ public class LineChart extends View {
     private void drawYAxisLabel(Canvas canvas) {
         mPaint.reset();
         mPaint.setColor(axisTextColor);
-        mPaint.setTextSize(axisTextSize);
+        mPaint.setTextSize(spToPx(mDm, axisTextSize));
         mPaint.setAntiAlias(true);
         Rect textRect = new Rect();
         for (int i = 0; i <= yItemNum; i++){
@@ -376,7 +385,7 @@ public class LineChart extends View {
                 break;
             }
             mPaint.getTextBounds(label, 0, label.length(), textRect);
-            int x = originX - yAxisGap- textRect.width();
+            int x = originX - dpToPx(mDm, yAxisGap) - textRect.width();
             int y = originY - i * yUnit + textRect.height()/2;
             canvas.drawText(label, x, y, mPaint);
         }
@@ -386,9 +395,11 @@ public class LineChart extends View {
     private void drawXAxisLabel(Canvas canvas) {
         mPaint.reset();
         mPaint.setColor(axisTextColor);
-        mPaint.setTextSize(axisTextSize);
+        mPaint.setTextSize(spToPx(mDm, axisTextSize));
         mPaint.setAntiAlias(true);
         Rect textRect = new Rect();
+        int childLineHeight = dpToPx(mDm, xAxisChildLineHeight);
+        int gap = dpToPx(mDm, xAxisGap);
         for (int i = 0; i < xItemNum; i++){
             String label = xLabels.get(i);
             if (TextUtils.isEmpty(label)){
@@ -396,7 +407,7 @@ public class LineChart extends View {
             }
             mPaint.getTextBounds(label, 0, label.length(), textRect);
             int x = (int) (originX + (i + 0.5) * xUnit - textRect.width()/2);
-            int y = originY + xAxisChildLineHeight + xAxisGap + textRect.height();
+            int y = originY + childLineHeight + gap + textRect.height();
             canvas.drawText(label, x, y, mPaint);
         }
     }
@@ -489,5 +500,15 @@ public class LineChart extends View {
 
     public void setMakerLineWidth(int makerLineWidth) {
         this.makerLineWidth = makerLineWidth;
+    }
+
+    //dp转为px
+    public int dpToPx(DisplayMetrics dm, int dp){
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, dm);
+    }
+
+    //sp转为px
+    public int spToPx(DisplayMetrics dm, int sp){
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm);
     }
 }

@@ -7,10 +7,11 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.os.Handler;
+import android.os.Message;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
@@ -85,19 +86,22 @@ public class LineChart extends View {
     private int lineWidth = 2;
 
     //悬浮maker标记的字体颜色
-    private int makerTextColor;
+    private int makerTextColor = Color.rgb(255, 255, 255);
 
     //悬浮maker标记的字体大小,dp
-    private int makerTextSize;
+    private int makerTextSize = 14;
 
     //悬浮maker标记的背景颜色
-    private int makerBackgroundColor;
+    private int makerBackgroundColor = Color.argb(155, 19, 113, 187);
 
     //悬浮maker标旁边竖线的颜色
-    private int makerLineColor;
+    private int makerLineColor = Color.rgb(205, 137, 118);
 
     //悬浮maker标旁边竖线的宽度,dp
-    private int makerLineWidth;
+    private int makerLineWidth = 1;
+
+    //悬浮maker的padding,dp
+    private int makerPadding = 10;
 
 
     //图标的宽度,px
@@ -175,6 +179,27 @@ public class LineChart extends View {
     //点被点击选中时，标记提示框显示的时间, millis
     private long showMakerTime = 5000;
 
+    private Handler mHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == 0x123){
+                pointIsSelected = false;
+                selectedPointId = -1;
+                postInvalidate();
+            }
+            super.handleMessage(msg);
+        }
+    };
+
+    public interface OnChartAnimatorListener{
+        /**
+         * 当图表动画执行完后,回调此方法,不要做耗时的操作。
+         */
+        void onAnimFinished();
+    }
+
+    private OnChartAnimatorListener onChartAnimatorListener;
+
     public LineChart(Context context) {
         this(context, null);
     }
@@ -241,6 +266,10 @@ public class LineChart extends View {
         if (isAniming){
             mProgress += intervalProgress;
             if (mProgress >= mPoints.size()) isAniming = false;
+
+            if (onChartAnimatorListener != null){
+                onChartAnimatorListener.onAnimFinished();
+            }
             postInvalidateDelayed(intervalTime);
         }
     }
@@ -448,13 +477,76 @@ public class LineChart extends View {
         }
     }
 
+    //绘制maker标记旁边的竖线
     private void drawMakerLine(Canvas canvas) {
-
+        mPaint.reset();
+        mPaint.setColor(makerLineColor);
+        mPaint.setAntiAlias(true);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeWidth(dpToPx(mDm, makerLineWidth));
+        float x = (float) (originX + (0.5 + selectedPointId) * xUnit);
+        canvas.drawLine(x, originY, x, originY - yUnit * yItemNum, mPaint);
     }
 
+    //绘制maker标记框
     private void drawMaker(Canvas canvas) {
+        String[] makerTexts = new String[]{
+                xLabels.get(selectedPointId),
+                mPoints.get(selectedPointId).getyValue() + yUnitName
+        };
 
+        int textHeight = 0;
+        int textWidth = 0;
+        Rect rect = new Rect();
+        mPaint.reset();
+        mPaint.setTextSize(spToPx(mDm, makerTextSize));
+        mPaint.setAntiAlias(true);
+        for (String text : makerTexts){
+            mPaint.getTextBounds(text, 0, text.length(), rect);
+            if (textWidth < rect.width()){
+                textWidth = rect.width();
+            }
+        }
+        textHeight = rect.height();
+
+        int left = 0;
+        int bottom = 0;
+
+        int padding = dpToPx(mDm, makerPadding);
+
+        int ceil = (int) Math.ceil((padding * 4 + textWidth) * 1.0f / xUnit - 0.5);
+        if (selectedPointId < xItemNum - ceil){//当竖线右边空间充足时,将maker绘制在竖线右边
+//            drawMakerOnRight
+            left = mPoints.get(selectedPointId).getX() + padding;
+        }else {//当竖线右边空间不足时,将maker绘制在竖线左边
+//            drawMakerOnLeft
+            left = mPoints.get(selectedPointId).getX() - (padding * 3 + textWidth);
+        }
+
+        //求maker的底边
+        if (originY - padding * 5 - textHeight * 2 > mPoints.get(selectedPointId).getY()){//当点击点和x轴之间空间充足时,底边以点击点为参照
+            bottom = mPoints.get(selectedPointId).getY() + padding * 4 + textHeight * 2;
+        }else {//当点击点和x轴之间空间不足时,底边以x轴为参照,避免maker绘制到x轴一下
+            bottom = originY - padding;
+        }
+
+        mPaint.reset();
+        mPaint.setColor(makerBackgroundColor);
+        mPaint.setAntiAlias(true);
+        mPaint.setStyle(Paint.Style.FILL);
+        //绘制矩形背景
+        canvas.drawRect(left, (float) (bottom - textHeight * 2 - padding * 2.5),  left + textWidth + padding * 2, bottom, mPaint);
+
+
+        mPaint.reset();
+        mPaint.setColor(makerTextColor);
+        mPaint.setTextSize(spToPx(mDm, makerTextSize));
+        mPaint.setAntiAlias(true);
+        //绘制maker上的文字
+        canvas.drawText(makerTexts[1], left + padding, bottom - padding , mPaint);
+        canvas.drawText(makerTexts[0], left + padding, (float) (bottom - 1.5 * padding - textHeight), mPaint);
     }
+
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -476,14 +568,8 @@ public class LineChart extends View {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 if (pointIsSelected){
-                    postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            pointIsSelected = false;
-                            selectedPointId = -1;
-                            postInvalidate();
-                        }
-                    }, showMakerTime);
+                    mHandler.removeMessages(0x123);//清空上一次的消息
+                    mHandler.sendEmptyMessageDelayed(0x123, showMakerTime);
                 }
                 break;
         }
@@ -501,7 +587,7 @@ public class LineChart extends View {
 
         if (floor >= 0 && floor < mPoints.size()){
             ChartPoint p = mPoints.get(floor);
-            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 20 * 20;
+            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 30 * 30;
             if (interval < 0){
                 return floor;
             }
@@ -509,7 +595,7 @@ public class LineChart extends View {
 
         if (ceil >= 0 && ceil < mPoints.size()){
             ChartPoint p = mPoints.get(ceil);
-            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 20 * 20;
+            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 30 * 30;
             if (interval < 0){
                 return ceil;
             }
@@ -654,5 +740,14 @@ public class LineChart extends View {
 
     public void setShowMakerTime(long showMakerTime) {
         this.showMakerTime = showMakerTime;
+    }
+
+
+    public void setMakerPadding(int makerPadding) {
+        this.makerPadding = makerPadding;
+    }
+
+    public void setOnChartAnimatorListener(OnChartAnimatorListener onChartAnimatorListener) {
+        this.onChartAnimatorListener = onChartAnimatorListener;
     }
 }

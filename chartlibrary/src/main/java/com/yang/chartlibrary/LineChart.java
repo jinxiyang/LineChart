@@ -10,7 +10,9 @@ import android.graphics.Rect;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -164,6 +166,15 @@ public class LineChart extends View {
     private DisplayMetrics mDm;
 
 
+    //标志是否有点被点击选中
+    private boolean pointIsSelected = false;
+
+    //被点击选中的点在mPoints中的id
+    private int selectedPointId = -1;
+
+    //点被点击选中时，标记提示框显示的时间, millis
+    private long showMakerTime = 5000;
+
     public LineChart(Context context) {
         this(context, null);
     }
@@ -221,6 +232,11 @@ public class LineChart extends View {
         drawLine(canvas);
         drawShadow(canvas);
         drawChartPoints(canvas);
+
+        if (pointIsSelected){
+            drawMakerLine(canvas);
+            drawMaker(canvas);
+        }
 
         if (isAniming){
             mProgress += intervalProgress;
@@ -432,12 +448,83 @@ public class LineChart extends View {
         }
     }
 
+    private void drawMakerLine(Canvas canvas) {
+
+    }
+
+    private void drawMaker(Canvas canvas) {
+
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()){
+            case MotionEvent.ACTION_DOWN:
+                if (isAniming){
+                    return true;
+                }
+                selectedPointId = findPointIdNearbyLocation(event.getX(), event.getY());
+//                Log.i("======", "selectedPointId: " + selectedPointId);
+                if (selectedPointId != -1){
+                    pointIsSelected = true;
+                    invalidate();
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (pointIsSelected){
+                    postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            pointIsSelected = false;
+                            selectedPointId = -1;
+                            postInvalidate();
+                        }
+                    }, showMakerTime);
+                }
+                break;
+        }
+        return true;
+    }
+
+    //在所给位置附近找到最近的图表中的点, 范围0-size    -1代表没找到
+    private int findPointIdNearbyLocation(float x, float y) {
+        if (mPoints.isEmpty() || x < originX || x > originX + xItemNum * xUnit){
+            return -1;
+        }
+        double id = (x - originX) / xUnit - 0.5;
+        int floor = (int) Math.floor(id);
+        int ceil = (int) Math.ceil(id);
+
+        if (floor >= 0 && floor < mPoints.size()){
+            ChartPoint p = mPoints.get(floor);
+            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 20 * 20;
+            if (interval < 0){
+                return floor;
+            }
+        }
+
+        if (ceil >= 0 && ceil < mPoints.size()){
+            ChartPoint p = mPoints.get(ceil);
+            double interval = Math.pow(x - p.getX(), 2) + Math.pow(y - p.getY(), 2) - 20 * 20;
+            if (interval < 0){
+                return ceil;
+            }
+        }
+        return -1;
+
+    }
 
     public void setData(List<ChartPoint> points){
         mPoints = points;
         isAniming = true;
         mProgress = 0;
         needCalculatePoint = true;
+        pointIsSelected = false;
+        selectedPointId = -1;
         postInvalidate();
     }
 
@@ -563,5 +650,9 @@ public class LineChart extends View {
 
     public void setIntervalProgress(float intervalProgress) {
         this.intervalProgress = intervalProgress;
+    }
+
+    public void setShowMakerTime(long showMakerTime) {
+        this.showMakerTime = showMakerTime;
     }
 }

@@ -2,6 +2,8 @@ package com.yang.linechart;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import com.yang.chartlibrary.ChartPoint;
 import com.yang.chartlibrary.LineChart;
@@ -14,6 +16,24 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        update();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.refresh){
+            update();
+        }
+        return true;
+    }
+
+    private void update() {
         final LineChart chart = (LineChart) findViewById(R.id.linechart);
         final ArrayList<ChartPoint> mPoints = new ArrayList<>();
         mPoints.add(new ChartPoint(120, "9/16"));
@@ -36,4 +56,6 @@ public class MainActivity extends AppCompatActivity {
 
         chart.setData(mPoints);
     }
+
+
 }

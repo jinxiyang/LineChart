@@ -556,7 +556,6 @@ public class LineChart extends View {
                     return true;
                 }
                 selectedPointId = findPointIdNearbyLocation(event.getX(), event.getY());
-//                Log.i("======", "selectedPointId: " + selectedPointId);
                 if (selectedPointId != -1){
                     pointIsSelected = true;
                     invalidate();
